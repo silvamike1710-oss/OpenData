@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel de Transparência.exe</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background: #ffffff;
+    color: #000000;
+    font-family: "MS Sans Serif", "Tahoma", Geneva, sans-serif;
+    font-size: 12px;
+    margin: 0;
+    padding: 16px;
+  }
+  /* ---- generic win95 chrome, monochrome only (black/white) ---- */
+  .win {
+    background: #ffffff;
+    border: 1px solid #000000;
+    box-shadow:
+      inset 1px 1px 0 #ffffff,
+      inset -2px -2px 0 #000000,
+      inset 2px 2px 0 #ffffff;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  .titlebar {
+    background: #000000;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 4px 3px 6px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+  .titlebar .tb-btns span {
+    display: inline-block;
+    width: 16px; height: 14px;
+    border: 1px solid #ffffff;
+    text-align: center;
+    line-height: 12px;
+    margin-left: 3px;
+    color: #ffffff;
+    cursor: default;
+  }
+  .menubar {
+    display: flex;
+    gap: 14px;
+    padding: 3px 8px;
+    border-bottom: 1px solid #000000;
+  }
+  .menubar span { cursor: default; }
+  .menubar span:hover { background: #000000; color: #ffffff; padding: 0 2px; }
+  .content { padding: 10px; }
+  fieldset.win {
+    border: 1px solid #000000;
+    box-shadow: inset 1px 1px 0 #fff, inset -2px -2px 0 #000, inset 2px 2px 0 #fff;
+    padding: 10px;
+    margin: 0 0 12px 0;
+  }
+  legend { padding: 0 4px; font-weight: bold; }
+  label { display: block; margin: 6px 0 2px; }
+  input[type=text], input[type=password], input[type=number], select {
+    font-family: inherit;
+    font-size: 12px;
+    border: 1px solid #000;
+    box-shadow: inset 1px 1px 0 #000, inset -1px -1px 0 #fff;
+    background: #fff;
+    color: #000;
+    padding: 3px 4px;
+    width: 100%;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
+  button {
+    font-family: inherit;
+    font-size: 12px;
+    background: #fff;
+    border: 1px solid #000;
+    box-shadow: inset 1px 1px 0 #fff, inset -2px -2px 0 #000, inset 2px 2px 0 #fff;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  button:active {
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #000;
+  }
+  button:disabled { color: #666; cursor: default; }
+  .btnrow { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .statusbar {
+    border-top: 1px solid #000;
+    padding: 3px 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+  .dialog {
+    border: 2px solid #000;
+    background: #fff;
+    padding: 0;
+    margin-top: 10px;
+  }
+  .dialog .titlebar { background: #000; }
+  .dialog .body { padding: 12px; white-space: pre-wrap; line-height: 1.5; }
+  .dialog .body button { float: right; }
+  table { border-collapse: collapse; width: 100%; font-size: 11px; }
+  th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; white-space: nowrap; }
+  th { background: #000; color: #fff; cursor: pointer; user-select: none; }
+  th:hover { background: #333; }
+  .tablewrap { max-height: 260px; overflow: auto; border: 1px solid #000; }
+  .chartsgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  canvas { background: #fff; }
+  .hint { font-size: 11px; color: #000; opacity: 0.75; margin-top: 4px; }
+  .demo-flag { background: #000; color: #fff; padding: 1px 6px; font-size: 10px; letter-spacing: 1px; }
+  .blink { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  a { color: #000; }
+  ::-webkit-scrollbar { width: 14px; height: 14px; }
+  ::-webkit-scrollbar-track { background: #fff; border-left: 1px solid #000; }
+  ::-webkit-scrollbar-thumb { background: #fff; border: 1px solid #000; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #000; }
+</style>
+</head>
+<body>
+
+<div class="win">
+  <div class="titlebar">
+    <span>📊 painel-transparencia.exe — Portal da Transparência / Despesas Públicas</span>
+    <span class="tb-btns"><span>_</span><span>□</span><span>x</span></span>
+  </div>
+  <div class="menubar">
+    <span onclick="toggleDialog('dlg-help')">Ajuda</span>
+    <span onclick="toggleDialog('dlg-cite')">Citação</span>
+    <span onclick="exportCSV()">Exportar CSV</span>
+    <span onclick="clearAll()">Limpar</span>
+  </div>
+
+  <div class="content">
+
+    <fieldset class="win">
+      <legend>Chave da API</legend>
+      <label for="apikey">chave-api-dados (obtida em portaldatransparencia.gov.br/api-de-dados/cadastrar-email)</label>
+      <input type="password" id="apikey" placeholder="cole sua chave aqui — fica só na memória desta aba, nunca é salva">
+      <div class="hint">A chave nunca é enviada a nenhum servidor além de api.portaldatransparencia.gov.br, e não fica salva ao fechar a aba.</div>
+    </fieldset>
+
+    <fieldset class="win">
+      <legend>Consulta — Despesas por Órgão</legend>
+      <div class="row">
+        <div>
+          <label for="orgao">Código do órgão (SIAFI)</label>
+          <select id="orgao">
+            <option value="20000">20000 — Presidência da República</option>
+            <option value="25000">25000 — Ministério da Fazenda</option>
+            <option value="26000" selected>26000 — Ministério da Educação</option>
+            <option value="30000">30000 — Ministério da Justiça</option>
+            <option value="36000">36000 — Ministério da Saúde</option>
+            <option value="39000">39000 — Ministério da Infraestrutura</option>
+            <option value="44000">44000 — Ministério do Meio Ambiente</option>
+            <option value="52000">52000 — Ministério da Defesa</option>
+            <option value="55000">55000 — Ministério do Desenvolvimento Social</option>
+            <option value="custom">Outro código (digitar)</option>
+          </select>
+          <input type="text" id="orgaoCustom" placeholder="ex: 22000" style="display:none; margin-top:4px;">
+        </div>
+        <div>
+          <label for="mes">Mês</label>
+          <select id="mes">
+            <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+            <option value="03">Março</option><option value="04">Abril</option>
+            <option value="05">Maio</option><option value="06">Junho</option>
+            <option value="07">Julho</option><option value="08">Agosto</option>
+            <option value="09">Setembro</option><option value="10">Outubro</option>
+            <option value="11">Novembro</option><option value="12" selected>Dezembro</option>
+          </select>
+        </div>
+        <div>
+          <label for="ano">Ano</label>
+          <input type="number" id="ano" value="2023" min="2014" max="2026">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button id="btnFetch" onclick="fetchDespesas()">▶ Consultar e adicionar à comparação</button>
+        <button onclick="loadDemo()">Carregar dados de exemplo (offline)</button>
+        <button onclick="clearAll()">Limpar tudo</button>
+      </div>
+      <div class="hint" id="fetchHint">
+        Cada consulta busca 1 órgão + 1 mês/ano e ADICIONA os registros ao painel abaixo — assim dá para comparar
+        vários órgãos ou vários meses no mesmo gráfico. Chamadas em excesso são limitadas pela própria API do governo.
+      </div>
+    </fieldset>
+
+    <div id="dlg-help" class="dialog" style="display:none;">
+      <div class="titlebar"><span>Sobre / Aviso técnico</span><span class="tb-btns"><span onclick="toggleDialog('dlg-help')">x</span></span></div>
+      <div class="body">Este painel faz chamadas diretamente do seu navegador para:
+  https://api.portaldatransparencia.gov.br/api-de-dados/despesas/por-orgao
+
+Isso é um app puramente client-side (HTML/JS), sem servidor por trás. Duas coisas podem impedir a consulta real:
+
+1) CORS — a API do Portal da Transparência foi feita para ser chamada por programas
+   (Python, backend, etc.), não necessariamente por navegadores rodando em outro domínio.
+   Se o servidor não devolver o cabeçalho Access-Control-Allow-Origin liberando este site,
+   o navegador vai BLOQUEAR a resposta antes mesmo de ela chegar aqui — e isso não tem
+   solução do lado do JavaScript, só rodando o pedido a partir de um servidor/proxy seu.
+
+2) Limite de requisições — o Portal limita o número de chamadas por minuto por chave.
+
+Se a consulta falhar, o painel mostra o erro exato e oferece "Carregar dados de exemplo"
+para você testar gráficos, tabela e exportação com dados fictícios no mesmo formato.
+
+Isso não é uma falha de implementação — é assim que a maioria das APIs de governo se comporta
+quando chamadas direto do navegador. Para uso jornalístico real, rode esta mesma lógica de
+fetch em um script Python/Node (o botão "Citação" já te dá a URL exata usada).</div>
+    </div>
+
+    <div id="dlg-cite" class="dialog" style="display:none;">
+      <div class="titlebar"><span>Citação para apuração / fact-check</span><span class="tb-btns"><span onclick="toggleDialog('dlg-cite')">x</span></span></div>
+      <div class="body" id="citeBody">Nenhuma consulta feita ainda.</div>
+    </div>
+
+    <div id="errBox" class="dialog" style="display:none; border-color:#000;">
+      <div class="titlebar"><span>⚠ Erro na consulta</span><span class="tb-btns"><span onclick="document.getElementById('errBox').style.display='none'">x</span></span></div>
+      <div class="body" id="errBody"></div>
+    </div>
+
+    <fieldset class="win">
+      <legend>Configurar gráfico <span id="demoFlag" class="demo-flag" style="display:none;">DADOS DE EXEMPLO — NÃO SÃO DADOS REAIS</span></legend>
+      <div class="row3">
+        <div>
+          <label for="fieldX">Agrupar por (eixo X)</label>
+          <select id="fieldX" onchange="renderAll()"></select>
+        </div>
+        <div>
+          <label for="fieldY">Somar valor (eixo Y)</label>
+          <select id="fieldY" onchange="renderAll()"></select>
+        </div>
+        <div>
+          <label for="topN">Mostrar top</label>
+          <input type="number" id="topN" value="10" min="3" max="30" onchange="renderAll()">
+        </div>
+        <div></div>
+      </div>
+    </fieldset>
+
+    <div class="chartsgrid">
+      <fieldset class="win">
+        <legend>Comparativo (barras)</legend>
+        <canvas id="barChart" height="220"></canvas>
+      </fieldset>
+      <fieldset class="win">
+        <legend>Evolução temporal (linha)</legend>
+        <canvas id="lineChart" height="220"></canvas>
+      </fieldset>
+    </div>
+
+    <fieldset class="win">
+      <legend>Registros acumulados (<span id="rowCount">0</span>) — clique no cabeçalho para ordenar</legend>
+      <div class="tablewrap">
+        <table id="dataTable">
+          <thead><tr id="tableHead"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </fieldset>
+
+  </div>
+
+  <div class="statusbar">
+    <span id="statusMsg">Pronto.</span>
+    <span id="statusMeta">0 registros | fonte: api.portaldatransparencia.gov.br</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+let records = [];        // accumulated, normalized rows from the API (or demo)
+let queryLog = [];       // every request made, for the citation panel
+let sortState = { col: null, dir: 1 };
+let isDemo = false;
+let barChart = null, lineChart = null;
+
+const ORG_NAMES = {
+  "20000": "Presidência da República", "25000": "Ministério da Fazenda",
+  "26000": "Ministério da Educação", "30000": "Ministério da Justiça",
+  "36000": "Ministério da Saúde", "39000": "Ministério da Infraestrutura",
+  "44000": "Ministério do Meio Ambiente", "52000": "Ministério da Defesa",
+  "55000": "Ministério do Desenvolvimento Social"
+};
+
+document.getElementById('orgao').addEventListener('change', (e) => {
+  document.getElementById('orgaoCustom').style.display = e.target.value === 'custom' ? 'block' : 'none';
+});
+
+function toggleDialog(id) {
+  const el = document.getElementById(id);
+  el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+function setStatus(msg) { document.getElementById('statusMsg').textContent = msg; }
+
+/* ============================================================
+   FETCH — real API call
+   ============================================================ */
+async function fetchDespesas() {
+  const key = document.getElementById('apikey').value.trim();
+  const orgSel = document.getElementById('orgao');
+  const orgao = orgSel.value === 'custom'
+    ? document.getElementById('orgaoCustom').value.trim()
+    : orgSel.value;
+  const mes = document.getElementById('mes').value;
+  const ano = document.getElementById('ano').value;
+  const mesAno = `${ano}${mes}`;
+
+  if (!key) {
+    showError("Cole sua chave de API (chave-api-dados) no campo no topo do painel. Consiga uma gratuitamente em:\nhttps://portaldatransparencia.gov.br/api-de-dados/cadastrar-email");
+    return;
+  }
+  if (!orgao) {
+    showError("Informe um código de órgão válido.");
+    return;
+  }
+
+  const url = `https://api.portaldatransparencia.gov.br/api-de-dados/despesas/por-orgao?codigoOrgao=${encodeURIComponent(orgao)}&mesAno=${mesAno}&pagina=1`;
+
+  const btn = document.getElementById('btnFetch');
+  btn.disabled = true;
+  setStatus(`Consultando ${orgao} — ${mes}/${ano}...`);
+  document.getElementById('errBox').style.display = 'none';
+
+  const logEntry = { url, orgao, mesAno, timestamp: new Date().toISOString(), ok: false };
+
+  try {
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'chave-api-dados': key, 'Accept': 'application/json' }
+    });
+
+    if (!resp.ok) {
+      let bodyText = '';
+      try { bodyText = await resp.text(); } catch (e) {}
+      throw new Error(`HTTP ${resp.status} ${resp.statusText}\n${bodyText.slice(0, 400)}`);
+    }
+
+    const data = await resp.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("A API respondeu, mas sem registros para esse órgão/mês. Tente outro período ou confira o código do órgão.");
+    }
+
+    // tag every row with the query context so charts can compare across queries
+    const tagged = data.map(row => ({
+      ...row,
+      _orgaoCod: orgao,
+      _orgaoNome: ORG_NAMES[orgao] || orgao,
+      _mesAno: `${mes}/${ano}`
+    }));
+
+    records = records.concat(tagged);
+    isDemo = false;
+    document.getElementById('demoFlag').style.display = 'none';
+    logEntry.ok = true;
+    setStatus(`OK — ${tagged.length} registros recebidos de ${orgao} (${mes}/${ano}).`);
+    rebuildFieldSelectors();
+    renderAll();
+
+  } catch (err) {
+    logEntry.error = String(err.message || err);
+    const corsLikely = err instanceof TypeError; // fetch() throws a bare TypeError on CORS/network block
+    showError(
+      (corsLikely
+        ? "A requisição foi bloqueada pelo navegador antes de chegar a uma resposta — quase sempre isso é CORS " +
+          "(o servidor do Portal da Transparência não autoriza chamadas de navegador vindas deste domínio), " +
+          "ou não há internet/a chave é inválida.\n\n"
+        : "A API respondeu com um erro:\n\n") +
+      String(err.message || err) +
+      "\n\nUse \"Carregar dados de exemplo\" para testar o painel com dados fictícios, ou rode esta mesma chamada " +
+      "a partir de um script (veja o botão Citação para a URL exata)."
+    );
+    setStatus("Falha na consulta — veja a janela de erro.");
+  } finally {
+    queryLog.push(logEntry);
+    updateCitation();
+    btn.disabled = false;
+  }
+}
+
+function showError(msg) {
+  document.getElementById('errBody').textContent = msg;
+  document.getElementById('errBox').style.display = 'block';
+}
+
+/* ============================================================
+   DEMO DATA — clearly-labeled fallback, same shape as the API
+   ============================================================ */
+function loadDemo() {
+  const orgs = [
+    ["26000", "Ministério da Educação"], ["36000", "Ministério da Saúde"],
+    ["52000", "Ministério da Defesa"], ["55000", "Ministério do Desenv. Social"],
+    ["39000", "Ministério da Infraestrutura"]
+  ];
+  const months = ["01/2023","04/2023","07/2023","10/2023","01/2024"];
+  const demo = [];
+  let seed = 42;
+  const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+
+  orgs.forEach(([cod, nome], oi) => {
+    months.forEach((ma) => {
+      const base = 800000000 + oi * 300000000;
+      const drift = rand() * 400000000;
+      const empenhado = Math.round(base + drift);
+      const liquidado = Math.round(empenhado * (0.7 + rand() * 0.2));
+      const pago = Math.round(liquidado * (0.85 + rand() * 0.1));
+      demo.push({
+        orgaoSuperior: nome, codigoOrgao: cod, mesAno: ma,
+        valorEmpenhado: empenhado, valorLiquidado: liquidado, valorPago: pago,
+        _orgaoCod: cod, _orgaoNome: nome, _mesAno: ma
+      });
+    });
+  });
+
+  records = demo;
+  isDemo = true;
+  document.getElementById('demoFlag').style.display = 'inline-block';
+  setStatus("Dados de exemplo carregados (offline, não são dados reais do governo).");
+  queryLog.push({ url: "(dados de exemplo — nenhuma chamada de rede feita)", timestamp: new Date().toISOString(), ok: true, demo: true });
+  updateCitation();
+  rebuildFieldSelectors();
+  renderAll();
+}
+
+function clearAll() {
+  records = []; queryLog = []; isDemo = false;
+  document.getElementById('demoFlag').style.display = 'none';
+  document.getElementById('errBox').style.display = 'none';
+  rebuildFieldSelectors();
+  renderAll();
+  updateCitation();
+  setStatus("Pronto.");
+}
+
+/* ============================================================
+   ADAPTIVE FIELD DETECTION
+   The real API's exact JSON field names can vary by query type,
+   so instead of hardcoding them, we inspect whatever came back
+   and let numeric-looking fields become Y-axis candidates and
+   text fields become X-axis / grouping candidates.
+   ============================================================ */
+function rebuildFieldSelectors() {
+  const fx = document.getElementById('fieldX');
+  const fy = document.getElementById('fieldY');
+  fx.innerHTML = ''; fy.innerHTML = '';
+
+  if (records.length === 0) return;
+
+  const sample = records[0];
+  const numericKeys = [];
+  const textKeys = [];
+
+  Object.keys(sample).forEach(k => {
+    const v = sample[k];
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+    if (!isNaN(n) && v !== null && v !== '' && !k.startsWith('_mesAno')) {
+      numericKeys.push(k);
+    } else {
+      textKeys.push(k);
+    }
+  });
+
+  // prefer our own tagged, always-present fields at the top of each list
+  const preferredX = ['_orgaoNome', '_mesAno', ...textKeys];
+  const preferredY = numericKeys.length ? numericKeys : ['_orgaoNome'];
+
+  [...new Set(preferredX)].forEach(k => fx.appendChild(new Option(k, k)));
+  [...new Set(preferredY)].forEach(k => fy.appendChild(new Option(k, k)));
+
+  // sensible defaults
+  if ([...fx.options].some(o => o.value === '_orgaoNome')) fx.value = '_orgaoNome';
+  const empenhado = [...fy.options].find(o => /empenh/i.test(o.value));
+  if (empenhado) fy.value = empenhado.value;
+}
+
+function numeric(v) {
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/\./g,'').replace(',','.'));
+  return isNaN(n) ? 0 : n;
+}
+
+/* ============================================================
+   RENDER — table + both charts, all monochrome
+   ============================================================ */
+function renderAll() {
+  renderTable();
+  renderCharts();
+  document.getElementById('rowCount').textContent = records.length;
+  document.getElementById('statusMeta').textContent = `${records.length} registros | fonte: api.portaldatransparencia.gov.br`;
+}
+
+function renderTable() {
+  const head = document.getElementById('tableHead');
+  const body = document.getElementById('tableBody');
+  head.innerHTML = ''; body.innerHTML = '';
+  if (records.length === 0) return;
+
+  const cols = Object.keys(records[0]).filter(k => k !== '_mesAno' || true);
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.textContent = c;
+    th.onclick = () => sortBy(c);
+    head.appendChild(th);
+  });
+
+  let rows = [...records];
+  if (sortState.col) {
+    rows.sort((a, b) => {
+      const av = a[sortState.col], bv = b[sortState.col];
+      const an = numeric(av), bn = numeric(bv);
+      const bothNumeric = !isNaN(an) && !isNaN(bn) && av !== '' && bv !== '';
+      if (bothNumeric) return (an - bn) * sortState.dir;
+      return String(av).localeCompare(String(bv)) * sortState.dir;
+    });
+  }
+
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    cols.forEach(c => {
+      const td = document.createElement('td');
+      let v = r[c];
+      if (typeof v === 'number') v = v.toLocaleString('pt-BR');
+      td.textContent = v;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function sortBy(col) {
+  sortState.dir = (sortState.col === col) ? -sortState.dir : 1;
+  sortState.col = col;
+  renderTable();
+}
+
+function renderCharts() {
+  const fx = document.getElementById('fieldX').value;
+  const fy = document.getElementById('fieldY').value;
+  const topN = parseInt(document.getElementById('topN').value, 10) || 10;
+
+  const barCtx = document.getElementById('barChart');
+  const lineCtx = document.getElementById('lineChart');
+
+  if (records.length === 0 || !fx || !fy) {
+    if (barChart) barChart.destroy();
+    if (lineChart) lineChart.destroy();
+    barChart = null; lineChart = null;
+    return;
+  }
+
+  // --- bar: sum(fy) grouped by fx, top N ---
+  const totals = {};
+  records.forEach(r => {
+    const label = String(r[fx] ?? '(vazio)');
+    totals[label] = (totals[label] || 0) + numeric(r[fy]);
+  });
+  const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, topN);
+
+  if (barChart) barChart.destroy();
+  barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        label: fy,
+        data: sorted.map(s => s[1]),
+        backgroundColor: '#ffffff',
+        borderColor: '#000000',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#000' }, grid: { color: '#000' }, border: { color: '#000' } },
+        y: { ticks: { color: '#000' }, grid: { color: '#fff' }, border: { color: '#000' } }
+      }
+    }
+  });
+
+  // --- line: fy over time (_mesAno), one line per _orgaoNome if present ---
+  const byOrgTime = {};
+  const monthsSet = new Set();
+  records.forEach(r => {
+    const org = r._orgaoNome || 'Total';
+    const ma = r._mesAno || '—';
+    monthsSet.add(ma);
+    byOrgTime[org] = byOrgTime[org] || {};
+    byOrgTime[org][ma] = (byOrgTime[org][ma] || 0) + numeric(r[fy]);
+  });
+  const months = [...monthsSet].sort();
+  const dashPatterns = [[], [6,3], [2,2], [8,3,2,3], [1,3], [10,2]];
+  const datasets = Object.keys(byOrgTime).map((org, i) => ({
+    label: org,
+    data: months.map(m => byOrgTime[org][m] || 0),
+    borderColor: '#000000',
+    backgroundColor: '#000000',
+    borderDash: dashPatterns[i % dashPatterns.length],
+    fill: false,
+    tension: 0.15,
+    pointRadius: 2
+  }));
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(lineCtx, {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#000' } } },
+      scales: {
+        x: { ticks: { color: '#000' }, grid: { color: '#fff' }, border: { color: '#000' } },
+        y: { ticks: { color: '#000' }, grid: { color: '#000' }, border: { color: '#000' } }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   EXPORT + CITATION — the "fact-checking" utilities
+   ============================================================ */
+function exportCSV() {
+  if (records.length === 0) { showError("Não há registros para exportar."); return; }
+  const cols = Object.keys(records[0]);
+  const lines = [cols.join(';')];
+  records.forEach(r => {
+    lines.push(cols.map(c => String(r[c] ?? '').replace(/;/g, ',')).join(';'));
+  });
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `despesas_portal_transparencia_${Date.now()}.csv`;
+  a.click();
+}
+
+function updateCitation() {
+  const el = document.getElementById('citeBody');
+  if (queryLog.length === 0) { el.textContent = "Nenhuma consulta feita ainda."; return; }
+  const lines = queryLog.map((q, i) =>
+    `[${i+1}] ${q.demo ? 'DADOS DE EXEMPLO (offline)' : (q.ok ? 'OK' : 'FALHOU')} — ${q.timestamp}\n    ${q.url}` +
+    (q.error ? `\n    erro: ${q.error.split('\n')[0]}` : '')
+  );
+  el.textContent =
+`Fonte: Portal da Transparência do Governo Federal (Controladoria-Geral da União)
+API: api.portaldatransparencia.gov.br/api-de-dados/despesas/por-orgao
+
+Consultas feitas nesta sessão:
+${lines.join('\n\n')}
+
+Para reproduzir: refaça a mesma requisição HTTP GET com o header
+"chave-api-dados: <sua chave>" e compare o resultado com o exibido
+aqui. Sempre confira o dado bruto no Portal antes de publicar.`;
+}
+
+/* boot */
+renderAll();
+</script>
+
+</body>
+</html>
